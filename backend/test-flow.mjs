@@ -31,7 +31,7 @@ async function waitForPhase(socket, phase) {
   });
 }
 
-async function createPlayer(name, avatar = '🦊', settings = { rounds: 1, timePerRound: 5, maxPlayers: 10, category: 'all' }) {
+async function createPlayer(name, avatar = '🦊', settings = { rounds: 1, timePerRound: 5, maxPlayers: 10, gameMode: 'mixed', mode: 'weird_facts' }) {
   const socket = connect();
   await once(socket, 'connect');
   socket.emit('create-room', { playerName: name, avatar, settings });
@@ -133,7 +133,7 @@ async function runTests() {
     if (lobbyHost.gamePhase === 'waiting' && lobbyP2.gamePhase === 'waiting' && lobbyHost.isRematchLobby) {
       pass('Play again sends all players to rematch lobby');
     } else {
-      fail('Play again sends all players to lobby with new category', JSON.stringify({ lobbyHost, lobbyP2 }));
+      fail('Play again sends all players to lobby with new game mode', JSON.stringify({ lobbyHost, lobbyP2 }));
     }
 
     const hostLeftPromise = waitForPlayersUpdate(

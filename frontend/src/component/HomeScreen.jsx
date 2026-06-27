@@ -45,6 +45,11 @@ const StyledButton = styled(Button)(() => ({
   maxWidth: '400px',
   transition: 'transform 0.2s, box-shadow 0.2s',
   '&:hover': { transform: 'scale(1.02)' },
+  '@media (min-width: 768px)': {
+    width: 'auto',
+    minWidth: '300px',
+    flex: '0 0 auto',
+  },
 }));
 
 export default function HomeScreen({ onCreateRoom, onJoinRoom, onHowToPlay }) {
@@ -68,8 +73,9 @@ export default function HomeScreen({ onCreateRoom, onJoinRoom, onHowToPlay }) {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '20px',
+        paddingTop: { xs: '64px', md: '20px' },
         position: 'relative',
-        overflow: 'hidden',
+        overflow: { xs: 'auto', md: 'hidden' },
         boxSizing: 'border-box',
       }}
     >
@@ -121,8 +127,8 @@ export default function HomeScreen({ onCreateRoom, onJoinRoom, onHowToPlay }) {
       <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 5, py: 2 }}>
         <Grid container spacing={4} sx={{ alignItems: 'center', justifyContent: 'center' }}>
           <Grid size={{ xs: 12 }}>
-            <Box sx={{ textAlign: 'center' }}>
-              <CasinoIcon sx={{ fontSize: '48px', color: '#f5c518', mb: 1 }} />
+            <Box sx={{ textAlign: 'center', position: 'relative', zIndex: 6, width: '100%' }}>
+              <CasinoIcon sx={{ fontSize: { xs: '40px', md: '48px' }, color: '#f5c518', mb: 1 }} />
               <Box sx={{ transform: 'rotate(-2deg)', mb: -0.5 }}>
                 <Typography variant="h1" sx={{
                   fontWeight: 900, lineHeight: 1, letterSpacing: '4px', textTransform: 'uppercase',

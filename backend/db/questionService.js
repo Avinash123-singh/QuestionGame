@@ -1,81 +1,107 @@
 const { getPool } = require('./db');
 const { getQuestionsForGame: getInMemoryQuestions } = require('../game/questions');
+const {
+  CATEGORY_IDS,
+  isValidCategory,
+  normalizeCategories,
+  getTypesForRounds,
+} = require('../game/categories');
 
-const VALID_CATEGORIES = ['trivia', 'movies', 'history', 'science', 'geography'];
+function rowToQuestion(r) {
+  const type = r.type || r.category;
+  return {
+    id: r.id,
+    text: r.text,
+    realAnswer: r.real_answer,
+    type,
+    category: type,
+    imageUrl: r.image_url || null,
+    difficulty: r.difficulty || 'medium',
+  };
+}
 
-async function pickQuestionsFromDb(category, count, playerProfileIds = []) {
+async function pickOneQuestion(type, playerProfileIds, excludeIds = []) {
   const pool = getPool();
   if (!pool) return null;
 
   const profileIds = playerProfileIds.filter(Boolean);
-  const cat = category && category !== 'all' && VALID_CATEGORIES.includes(category) ? category : null;
-
-  const baseWhere = cat ? 'WHERE q.category = $1' : 'WHERE TRUE';
-  const baseParams = cat ? [cat] : [];
-
+  const params = [type];
   let excludeClause = '';
-  if (profileIds.length > 0) {
-    const idParam = cat ? 2 : 1;
-    excludeClause = ` AND q.id NOT IN (
-      SELECT question_id FROM player_seen_questions WHERE player_id = ANY($${idParam}::uuid[])
-    )`;
-    baseParams.push(profileIds);
+  if (excludeIds.length) {
+    params.push(excludeIds);
+    excludeClause = ` AND q.id != ALL($${params.length}::int[])`;
   }
 
-  const limitParam = baseParams.length + 1;
+  let seenClause = '';
+  if (profileIds.length) {
+    params.push(profileIds);
+    seenClause = ` AND q.id NOT IN (
+      SELECT question_id FROM player_seen_questions WHERE player_id = ANY($${params.length}::uuid[])
+    )`;
+  }
+
   const sql = `
-    SELECT q.id, q.text, q.real_answer, q.category
+    SELECT q.id, q.text, q.real_answer, q.category, q.type, q.image_url, q.difficulty
     FROM questions q
-    ${baseWhere}${excludeClause}
+    WHERE COALESCE(q.type, q.category) = $1
+    ${excludeClause}${seenClause}
     ORDER BY RANDOM()
-    LIMIT $${limitParam}
+    LIMIT 1
   `;
-  baseParams.push(count);
 
-  let { rows } = await pool.query(sql, baseParams);
+  let { rows } = await pool.query(sql, params);
 
-  if (rows.length < count) {
-    const fallbackParams = cat ? [cat, count] : [count];
-    const fallbackWhere = cat ? 'WHERE q.category = $1' : '';
-    const fallbackLimit = cat ? '$2' : '$1';
-    const fallbackSql = `
-      SELECT q.id, q.text, q.real_answer, q.category
-      FROM questions q
-      ${fallbackWhere}
-      ORDER BY RANDOM()
-      LIMIT ${fallbackLimit}
-    `;
-    const fallback = await pool.query(fallbackSql, fallbackParams);
-    const seen = new Set(rows.map((r) => r.id));
-    for (const row of fallback.rows) {
-      if (rows.length >= count) break;
-      if (!seen.has(row.id)) {
-        rows.push(row);
-        seen.add(row.id);
-      }
+  if (!rows.length) {
+    const fallbackParams = [type];
+    let fbExclude = '';
+    if (excludeIds.length) {
+      fallbackParams.push(excludeIds);
+      fbExclude = ` AND q.id != ALL($2::int[])`;
+    }
+    const fallback = await pool.query(
+      `SELECT q.id, q.text, q.real_answer, q.category, q.type, q.image_url, q.difficulty
+       FROM questions q
+       WHERE COALESCE(q.type, q.category) = $1 ${fbExclude}
+       ORDER BY RANDOM() LIMIT 1`,
+      fallbackParams
+    );
+    rows = fallback.rows;
+  }
+
+  return rows[0] ? rowToQuestion(rows[0]) : null;
+}
+
+async function getQuestionsForGame(settings, rounds, playerProfileIds = []) {
+  const typesPerRound = getTypesForRounds(rounds, settings);
+  const pool = getPool();
+
+  if (!pool) {
+    return getInMemoryQuestions(settings, rounds, typesPerRound);
+  }
+  const questions = [];
+  const usedIds = [];
+
+  for (const type of typesPerRound) {
+    const q = await pickOneQuestion(type, playerProfileIds, usedIds);
+    if (q) {
+      questions.push(q);
+      if (q.id) usedIds.push(q.id);
     }
   }
 
-  return rows.map((r) => ({
-    id: r.id,
-    text: r.text,
-    realAnswer: r.real_answer,
-    category: r.category,
-  }));
-}
-
-async function getQuestionsForGame(category, count, playerProfileIds = []) {
-  const fromDb = await pickQuestionsFromDb(category, count, playerProfileIds);
-  if (fromDb?.length) {
-    return fromDb.slice(0, count);
+  if (questions.length >= rounds) {
+    return questions;
   }
 
-  return getInMemoryQuestions(category, count).map((q, i) => ({
-    id: null,
-    text: q.text,
-    realAnswer: q.realAnswer,
-    category: category || 'all',
-  }));
+  const fallback = getInMemoryQuestions(settings, rounds, typesPerRound);
+  while (questions.length < rounds && fallback.length) {
+    const next = fallback.shift();
+    if (!questions.some((q) => q.text === next.text)) {
+      questions.push(next);
+    }
+  }
+
+  return questions.slice(0, rounds);
 }
 
 async function markQuestionsSeen(playerProfileIds, questionIds) {
@@ -104,6 +130,11 @@ async function markQuestionsSeen(playerProfileIds, questionIds) {
   );
 
   await pool.query(
+    `UPDATE questions SET times_played = times_played + 1 WHERE id = ANY($1::int[])`,
+    [qIds]
+  );
+
+  await pool.query(
     `UPDATE player_profiles SET games_played = games_played + 1, updated_at = NOW()
      WHERE id = ANY($1::uuid[])`,
     [profiles]
@@ -116,18 +147,37 @@ async function bulkInsertQuestions(questions, source = 'import') {
 
   let inserted = 0;
   let skipped = 0;
+  const CHUNK = 300;
 
-  for (const q of questions) {
-    const category = VALID_CATEGORIES.includes(q.category) ? q.category : 'trivia';
+  for (let i = 0; i < questions.length; i += CHUNK) {
+    const chunk = questions.slice(i, i + CHUNK);
+    const values = [];
+    const params = [];
+    let p = 1;
+
+    for (const q of chunk) {
+      const type = isValidCategory(q.type || q.category) ? (q.type || q.category) : 'weird_facts';
+      values.push(`($${p}, $${p + 1}, $${p + 2}, $${p + 2}, $${p + 3}, $${p + 4}, $${p + 5})`);
+      params.push(
+        q.text.trim(),
+        (q.realAnswer || q.answer || q.real_answer).trim(),
+        type,
+        q.imageUrl || q.image_url || null,
+        q.difficulty || 'medium',
+        source
+      );
+      p += 6;
+    }
+
     const result = await pool.query(
-      `INSERT INTO questions (text, real_answer, category, source)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO questions (text, real_answer, category, type, image_url, difficulty, source)
+       VALUES ${values.join(', ')}
        ON CONFLICT (text, real_answer) DO NOTHING
        RETURNING id`,
-      [q.text.trim(), q.realAnswer.trim(), category, source]
+      params
     );
-    if (result.rowCount > 0) inserted += 1;
-    else skipped += 1;
+    inserted += result.rowCount;
+    skipped += chunk.length - result.rowCount;
   }
 
   return { inserted, skipped };
@@ -137,5 +187,5 @@ module.exports = {
   getQuestionsForGame,
   markQuestionsSeen,
   bulkInsertQuestions,
-  VALID_CATEGORIES,
+  CATEGORY_IDS,
 };

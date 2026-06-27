@@ -4,7 +4,17 @@ const PLAYER_ID_KEY = 'fap_player_id';
 const LEGACY_NAME_KEY = 'fap_player_name';
 const LEGACY_AVATAR_KEY = 'fap_player_avatar';
 
-const API_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:5002';
+function getApiUrl() {
+  if (typeof window === 'undefined') return 'http://localhost:5002';
+  const host = window.location.hostname;
+  const isLocalDev = host === 'localhost' || host === '127.0.0.1';
+  if (isLocalDev) {
+    return import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:5002';
+  }
+  return window.location.origin;
+}
+
+const API_URL = getApiUrl();
 
 function cleanName(name) {
   if (!name || name === 'undefined' || name === 'null') return '';

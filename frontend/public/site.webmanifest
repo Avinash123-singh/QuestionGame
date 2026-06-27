@@ -1,0 +1,16 @@
+{
+  "name": "Fake Answer Party",
+  "short_name": "FakeAnswer",
+  "description": "Free online multiplayer bluff game — fool your friends!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a0a2e",
+  "theme_color": "#1a0a2e",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

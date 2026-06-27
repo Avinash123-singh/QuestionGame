@@ -1,6 +1,8 @@
 # Fake Answer Party — Full Stack Multiplayer Game
 
-Online bluffing party game built with **React + Vite**, **Node.js + Express + Socket.io**, and optional **PostgreSQL/Supabase**.
+Online bluffing party game built with **React + Vite**, **Node.js + Express + Socket.io**, and **PostgreSQL/Supabase** for questions & player profiles.
+
+> **Full deploy guide:** see [DEPLOY.md](./DEPLOY.md) for step-by-step Vercel + Railway + Supabase setup.
 
 ## Quick Start (Local)
 
@@ -49,7 +51,40 @@ Frontend (Vercel)          Backend (Railway/Render)        Database (optional)
 
 ---
 
+## Game Modes (Party Modes)
+
+| Mode | Description |
+|------|-------------|
+| 🎲 **Mixed Mode** | Each round a different mode (recommended) |
+| 😂 Weird Facts | Bizarre but true facts |
+| 📰 Fake News | Spot the real headline |
+| 🚀 Fake Products | Real startup or fake idea? |
+| 🏢 Logo Challenge | Brand trivia |
+| 🖼️ Image Challenge | Visual guess rounds |
+| 🌍 World Trivia | Geography & culture |
+| 🔥 Internet Culture | Memes & viral trends |
+
+### Question Bank (MVP → Scale)
+
+```bash
+cd backend
+# Free local AI generation (Ollama + Llama3)
+ollama pull llama3
+npm run generate-questions weird_facts 500
+npm run generate-questions fake_news 500
+# ... repeat per mode
+
+# Or import JSON
+npm run import-questions data/your-questions.json
+```
+
+Target: **5,000–10,000 questions** for MVP, scale to **18,000+** (3,000 per mode).
+
+---
+
 ## Deploy to Production
+
+See **[DEPLOY.md](./DEPLOY.md)** for the complete guide. Quick summary:
 
 ### Frontend → Vercel
 1. Push repo to GitHub
@@ -92,7 +127,7 @@ Frontend (Vercel)          Backend (Railway/Render)        Database (optional)
 | `VITE_SOCKET_URL` | Frontend | Backend Socket.io URL |
 | `CLIENT_URL` | Backend | Frontend URL(s) for CORS (comma-separated) |
 | `PORT` | Backend | Server port (default 5002) |
-| `DATABASE_URL` | Backend | PostgreSQL connection (optional) |
+| `DATABASE_URL` | Backend | PostgreSQL connection (**required for live**) |
 | `NODE_ENV` | Backend | `production` in deploy |
 
 ---

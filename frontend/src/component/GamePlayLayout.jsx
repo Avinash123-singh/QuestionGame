@@ -73,35 +73,35 @@ export default function GamePlayLayout({
     gamePhase === 'submit' ? 'Submit Phase' : gamePhase === 'vote' ? 'Voting Phase' : 'Round Results';
 
   return (
-    <div className="h-screen w-full flex flex-col p-4 gap-3">
+    <div className="h-[100dvh] md:h-screen w-full flex flex-col p-2 md:p-4 gap-2 md:gap-3 overflow-hidden">
       <div className="shrink-0 text-center">
         <GameLogo size="sm" />
       </div>
 
-      <header className="flex items-center justify-between bg-white/10 backdrop-blur-lg rounded-xl px-6 py-3 shrink-0">
-        <div className={`flex items-center gap-2 bg-black/30 px-4 py-2 rounded-full min-w-[120px] ${isUrgent ? 'timer-urgent' : ''}`}>
-          <Clock size={18} className={isUrgent ? 'text-red-400' : 'text-orange-400'} />
-          <span className={`font-mono text-xl font-bold ${isUrgent ? 'text-red-400' : 'text-white'}`}>
+      <header className="grid grid-cols-3 items-center gap-1 md:flex md:justify-between bg-white/10 backdrop-blur-lg rounded-xl px-3 py-2 md:px-6 md:py-3 shrink-0">
+        <div className={`flex items-center justify-start gap-1.5 md:gap-2 bg-black/30 px-2 py-1.5 md:px-4 md:py-2 rounded-full min-w-0 md:min-w-[120px] ${isUrgent ? 'timer-urgent' : ''}`}>
+          <Clock size={16} className={`md:w-[18px] md:h-[18px] shrink-0 ${isUrgent ? 'text-red-400' : 'text-orange-400'}`} />
+          <span className={`font-mono text-base md:text-xl font-bold ${isUrgent ? 'text-red-400' : 'text-white'}`}>
             {displayTime}s
           </span>
         </div>
 
-        <div className="text-center">
-          <div className="text-white font-bold text-lg">Round {round} of {totalRounds}</div>
-          <div className="text-white/50 text-xs uppercase tracking-wider">{phaseLabel}</div>
+        <div className="text-center min-w-0 px-1">
+          <div className="text-white font-bold text-xs sm:text-sm md:text-lg truncate">Round {round} of {totalRounds}</div>
+          <div className="text-white/50 text-[10px] md:text-xs uppercase tracking-wider truncate">{phaseLabel}</div>
         </div>
 
         <button
           onClick={onSettingsClick}
-          className="flex items-center gap-2 bg-black/30 hover:bg-black/40 px-4 py-2 rounded-full text-white transition min-w-[120px] justify-center"
+          className="flex items-center justify-end md:justify-center gap-1 md:gap-2 bg-black/30 hover:bg-black/40 px-2 py-1.5 md:px-4 md:py-2 rounded-full text-white transition min-w-0 md:min-w-[120px]"
         >
-          <Settings size={18} />
-          <span className="font-semibold">Settings</span>
+          <Settings size={16} className="md:w-[18px] md:h-[18px] shrink-0" />
+          <span className="font-semibold text-sm hidden md:inline">Settings</span>
         </button>
       </header>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[220px_1fr_260px] gap-3 min-h-0">
-        <aside className="bg-white/10 backdrop-blur-lg rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[220px_1fr_260px] gap-2 md:gap-3 min-h-0 overflow-y-auto lg:overflow-hidden">
+        <aside className="bg-white/10 backdrop-blur-lg rounded-xl p-3 md:p-4 flex flex-col min-h-0 overflow-hidden max-h-[140px] lg:max-h-none shrink-0 lg:shrink">
           <div className="flex items-center gap-2 mb-3 shrink-0">
             <Users size={18} className="text-white" />
             <h2 className="text-white font-bold">Players</h2>
@@ -132,14 +132,14 @@ export default function GamePlayLayout({
           </div>
         </aside>
 
-        <main className="bg-white/10 backdrop-blur-lg rounded-xl flex flex-col min-h-0 overflow-hidden">
-          <div key={`${gamePhase}-${round}`} className="flex-1 min-h-0 p-6 phase-enter overflow-hidden">
+        <main className="bg-white/10 backdrop-blur-lg rounded-xl flex flex-col min-h-[220px] lg:min-h-0 overflow-hidden shrink-0 lg:shrink">
+          <div key={`${gamePhase}-${round}`} className="flex-1 min-h-0 p-3 md:p-6 phase-enter overflow-hidden">
             {children}
           </div>
         </main>
 
-        <aside className="bg-white/10 backdrop-blur-lg rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
-          <h2 className="text-white font-bold mb-3 shrink-0">Chat Box</h2>
+        <aside className="bg-white/10 backdrop-blur-lg rounded-xl p-3 md:p-4 flex flex-col min-h-0 overflow-hidden max-h-[200px] lg:max-h-none shrink-0 lg:shrink">
+          <h2 className="text-white font-bold mb-2 md:mb-3 shrink-0 text-sm md:text-base">Chat Box</h2>
           <div className="flex-1 bg-black/20 rounded-lg p-3 overflow-y-auto mb-3 space-y-2 min-h-0">
             {chatMessages.length === 0 ? (
               <p className="text-white/40 text-sm text-center mt-4">No messages yet</p>

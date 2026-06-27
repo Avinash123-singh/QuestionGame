@@ -3,14 +3,14 @@ import { ArrowLeft, Sparkles } from 'lucide-react';
 
 export default function HowToPlay({ onBack, backLabel = 'Back to Home' }) {
   return (
-    <div className="w-full min-h-screen p-6">
+    <div className="w-full min-h-[100dvh] p-4 md:p-6">
       <div className="max-w-4xl mx-auto">
-        <button onClick={onBack} className="text-white/60 hover:text-white mb-6 flex items-center gap-2">
+        <button onClick={onBack} className="text-white/60 hover:text-white mb-4 md:mb-6 flex items-center gap-2">
           <ArrowLeft size={20} /> {backLabel}
         </button>
 
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8">
-          <h1 className="text-4xl font-bold text-white text-center mb-8">How to Play</h1>
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 md:p-8">
+          <h1 className="text-2xl md:text-4xl font-bold text-white text-center mb-6 md:mb-8">How to Play</h1>
 
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-6">

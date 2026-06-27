@@ -3,7 +3,33 @@ import { io } from 'socket.io-client';
 
 const SocketContext = createContext(null);
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+function getSocketUrl() {
+  if (typeof window === 'undefined') return undefined;
+  const { hostname, port, origin } = window.location;
+  const isViteDev = (hostname === 'localhost' || hostname === '127.0.0.1')
+    && (port === '5173' || port === '5174');
+  if (isViteDev) {
+    return import.meta.env.VITE_SOCKET_URL || 'http://localhost:5002';
+  }
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return origin;
+  }
+  return origin;
+}
+
+function getApiUrl() {
+  if (typeof window === 'undefined') return 'http://localhost:5002';
+  const { hostname, port, origin } = window.location;
+  const isViteDev = (hostname === 'localhost' || hostname === '127.0.0.1')
+    && (port === '5173' || port === '5174');
+  if (isViteDev) {
+    return import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:5002';
+  }
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return origin;
+  }
+  return origin;
+}
 
 function applyRoomPayload(data, setters, getMyPlayerId) {
   if (data.roomId) setters.setRoomId(data.roomId);
@@ -22,6 +48,8 @@ function applyRoomPayload(data, setters, getMyPlayerId) {
   if (data.currentRound) setters.setCurrentRound(data.currentRound);
   if (data.totalRounds) setters.setTotalRounds(data.totalRounds);
   if (data.question) setters.setQuestion(data.question);
+  if (data.questionMode !== undefined) setters.setQuestionMode(data.questionMode);
+  if (data.questionImage !== undefined) setters.setQuestionImage(data.questionImage);
   if (data.votingOptions) setters.setVotingOptions(data.votingOptions);
   if (data.roundResults) setters.setRoundResults(data.roundResults);
   if (data.submittedCount !== undefined) setters.setSubmittedCount(data.submittedCount);
@@ -43,13 +71,16 @@ export function SocketProvider({ children }) {
     rounds: 3,
     timePerRound: 45,
     maxPlayers: 20,
-    category: 'all',
+    categoryMode: 'mixed',
+    categories: [],
   });
   const [gamePhase, setGamePhase] = useState('waiting');
   const [isRematchLobby, setIsRematchLobby] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
   const [totalRounds, setTotalRounds] = useState(3);
   const [question, setQuestion] = useState('');
+  const [questionMode, setQuestionMode] = useState(null);
+  const [questionImage, setQuestionImage] = useState(null);
   const [timeLeft, setTimeLeft] = useState(45);
   const [phaseEndsAt, setPhaseEndsAt] = useState(null);
   const [votingOptions, setVotingOptions] = useState([]);
@@ -64,9 +95,12 @@ export function SocketProvider({ children }) {
   }, [myPlayerId]);
 
   useEffect(() => {
-    const socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+    const socket = io(getSocketUrl(), {
+      path: '/socket.io/',
+      transports: ['polling', 'websocket'],
       reconnection: true,
+      reconnectionAttempts: 15,
+      timeout: 20000,
     });
     socketRef.current = socket;
 
@@ -81,6 +115,8 @@ export function SocketProvider({ children }) {
       setCurrentRound,
       setTotalRounds,
       setQuestion,
+      setQuestionMode,
+      setQuestionImage,
       setVotingOptions,
       setRoundResults,
       setSubmittedCount,
@@ -120,6 +156,8 @@ export function SocketProvider({ children }) {
       setCurrentRound(data.round);
       setTotalRounds(data.totalRounds);
       setQuestion(data.question);
+      setQuestionMode(data.questionMode || null);
+      setQuestionImage(data.questionImage || null);
       setPlayers(data.players);
       if (data.settings) setSettings(data.settings);
       if (data.isRematchLobby !== undefined) setIsRematchLobby(data.isRematchLobby);
@@ -134,6 +172,8 @@ export function SocketProvider({ children }) {
       setCurrentRound(data.round);
       if (data.totalRounds) setTotalRounds(data.totalRounds);
       if (data.question) setQuestion(data.question);
+      if (data.questionMode !== undefined) setQuestionMode(data.questionMode);
+      if (data.questionImage !== undefined) setQuestionImage(data.questionImage);
       if (data.timeLeft !== undefined) setTimeLeft(data.timeLeft);
       if (data.phaseEndsAt) setPhaseEndsAt(data.phaseEndsAt);
       if (data.players) setPlayers(data.players);
@@ -274,6 +314,8 @@ export function SocketProvider({ children }) {
     currentRound,
     totalRounds,
     question,
+    questionMode,
+    questionImage,
     timeLeft,
     phaseEndsAt,
     votingOptions,

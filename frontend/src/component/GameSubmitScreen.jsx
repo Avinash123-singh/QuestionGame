@@ -3,6 +3,7 @@ import { Send, Loader2 } from 'lucide-react';
 
 export default function GameSubmitScreen({
   question,
+  questionImage,
   submittedCount = 0,
   totalPlayers = 4,
   onSubmit,
@@ -19,9 +20,12 @@ export default function GameSubmitScreen({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <div className="shrink-0 bg-purple-900/50 rounded-xl p-6 mb-4">
-        <div className="text-white/60 text-sm mb-2">QUESTION</div>
-        <div className="text-2xl font-bold text-white">{question}</div>
+      <div className="shrink-0 bg-purple-900/50 rounded-xl p-4 md:p-6 mb-3 md:mb-4">
+        <div className="text-white/60 text-xs md:text-sm mb-2">QUESTION</div>
+        {questionImage && (
+          <img src={questionImage} alt="" className="max-h-32 md:max-h-40 rounded-lg mb-3 mx-auto object-contain" />
+        )}
+        <div className="text-lg md:text-2xl font-bold text-white">{question}</div>
         <p className="text-white/40 text-sm mt-3">
           The real answer is hidden. Write a believable fake answer to fool others!
         </p>

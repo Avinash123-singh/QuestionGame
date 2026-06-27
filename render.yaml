@@ -1,0 +1,20 @@
+# FREE deployment — Render (backend) + Vercel (frontend) + Neon/Supabase (DB)
+# All have free tiers. No Railway payment needed.
+
+services:
+  - type: web
+    name: fakeanswer-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5002
+      - key: DATABASE_URL
+        sync: false
+      - key: CLIENT_URL
+        sync: false

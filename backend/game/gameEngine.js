@@ -4,6 +4,7 @@ const {
   buildRoundResults,
   generateRoomCode,
 } = require('./gameLogic');
+const { normalizeCategories } = require('./gameModes');
 const { saveGameSession } = require('../db/db');
 const { getQuestionsForGame: getQuestionsFromDb, markQuestionsSeen } = require('../db/questionService');
 const { upsertProfile } = require('../db/playerService');
@@ -11,6 +12,14 @@ const { upsertProfile } = require('../db/playerService');
 const VOTE_TIME = 30;
 const RESULTS_TIME = 20;
 const FINAL_ROUND_DELAY = 3000;
+
+function cleanQuestionText(text) {
+  if (!text) return text;
+  return String(text)
+    .replace(/^Fun fact:\s*/i, '')
+    .replace(/\s*\(round\s+\d+\)/gi, '')
+    .trim();
+}
 
 function createRoomManager(io) {
   const rooms = new Map();
@@ -75,6 +84,15 @@ function createRoomManager(io) {
     startTimerSync(room);
   }
 
+  function questionPayload(q) {
+    if (!q) return { question: null, questionMode: null, questionImage: null };
+    return {
+      question: cleanQuestionText(q.text),
+      questionMode: q.type || q.category || null,
+      questionImage: q.imageUrl || null,
+    };
+  }
+
   function emitToRoom(roomId, event, data) {
     io.to(roomId).emit(event, data);
   }
@@ -129,7 +147,9 @@ function createRoomManager(io) {
       isRematchLobby: room.isRematchLobby,
       currentRound: room.currentRound,
       totalRounds: room.settings.rounds,
-      question: room.currentQuestion?.text ?? null,
+      question: cleanQuestionText(room.currentQuestion?.text) ?? null,
+      questionMode: room.currentQuestion?.type ?? room.currentQuestion?.category ?? null,
+      questionImage: room.currentQuestion?.imageUrl ?? null,
       votingOptions: room.phase === 'vote' ? room.votingOptions : [],
       roundResults: room.phase === 'results' ? room.roundResults : null,
       submittedCount: Object.keys(room.submissions).length,
@@ -165,7 +185,7 @@ function createRoomManager(io) {
         phase: 'submit',
         round: room.currentRound,
         totalRounds: room.settings.rounds,
-        question: room.currentQuestion?.text,
+        ...questionPayload(room.currentQuestion),
         timeLeft: remaining,
         phaseEndsAt: room.phaseEndsAt,
         players: getPublicPlayers(room),
@@ -176,7 +196,7 @@ function createRoomManager(io) {
       socket.emit('phase-changed', {
         phase: 'vote',
         round: room.currentRound,
-        question: room.currentQuestion?.text,
+        ...questionPayload(room.currentQuestion),
         timeLeft: remaining,
         phaseEndsAt: room.phaseEndsAt,
         votingOptions: room.votingOptions,
@@ -223,7 +243,7 @@ function createRoomManager(io) {
       phase: 'submit',
       round: room.currentRound,
       totalRounds: room.settings.rounds,
-      question: room.currentQuestion.text,
+      ...questionPayload(room.currentQuestion),
       timeLeft: getRemainingTime(room),
       phaseEndsAt: room.phaseEndsAt,
       players: getPublicPlayers(room),
@@ -254,7 +274,7 @@ function createRoomManager(io) {
     emitToRoom(room.id, 'phase-changed', {
       phase: 'vote',
       round: room.currentRound,
-      question: room.currentQuestion.text,
+      ...questionPayload(room.currentQuestion),
       timeLeft: getRemainingTime(room),
       phaseEndsAt: room.phaseEndsAt,
       votingOptions: room.votingOptions,
@@ -348,6 +368,9 @@ function createRoomManager(io) {
       winnerName: leaderboard[0]?.name,
       playerCount: room.players.length,
       totalRounds: room.settings.rounds,
+      gameMode: room.settings.categoryMode === 'custom'
+        ? room.settings.categories?.join(',') || 'custom'
+        : 'mixed',
     });
 
     markQuestionsSeen(getPlayerProfileIds(room), room.questionIds || []).catch(() => {});
@@ -403,7 +426,8 @@ function createRoomManager(io) {
         rounds: settings?.rounds ?? 3,
         timePerRound: settings?.timePerRound ?? 45,
         maxPlayers: settings?.maxPlayers ?? 20,
-        category: settings?.category ?? 'all',
+        categoryMode: settings?.categoryMode ?? 'mixed',
+        categories: settings?.categories ?? [],
       },
       phase: 'waiting',
       currentRound: 0,
@@ -512,7 +536,7 @@ function createRoomManager(io) {
     room.isRematchLobby = false;
 
     const questions = await getQuestionsFromDb(
-      room.settings.category,
+      room.settings,
       room.settings.rounds,
       getPlayerProfileIds(room)
     );
@@ -530,7 +554,7 @@ function createRoomManager(io) {
     emitToRoom(roomId, 'game-started', {
       round: room.currentRound,
       totalRounds: room.settings.rounds,
-      question: room.currentQuestion.text,
+      ...questionPayload(room.currentQuestion),
       players: getPublicPlayers(room),
       settings: room.settings,
       isRematchLobby: false,
@@ -603,12 +627,13 @@ function createRoomManager(io) {
     emitRoomPersonalized(room, 'return-to-lobby');
   }
 
-  function handleUpdateSettings(socket, { roomId, category, rounds, timePerRound, maxPlayers }) {
+  function handleUpdateSettings(socket, { roomId, categoryMode, categories, rounds, timePerRound, maxPlayers }) {
     const room = rooms.get(roomId);
     if (!room || room.hostId !== socket.id) return;
     if (room.phase !== 'waiting' || !room.isRematchLobby) return;
 
-    if (category) room.settings.category = category;
+    if (categoryMode) room.settings.categoryMode = categoryMode;
+    if (categories) room.settings.categories = categories;
     if (rounds) room.settings.rounds = rounds;
     if (timePerRound) room.settings.timePerRound = timePerRound;
     if (maxPlayers) room.settings.maxPlayers = maxPlayers;

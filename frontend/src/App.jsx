@@ -16,7 +16,6 @@ import { useSocket } from './context/SocketContext';
 import { useGameSettings } from './context/GameSettingsContext';
 import { getPlayerProfile, savePlayerProfile, loadPlayerProfile } from './utils/playerStorage';
 import { startMusic, stopMusic, resumeAudio } from './utils/audioEngine';
-import { Settings } from 'lucide-react';
 
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('home');
@@ -61,6 +60,8 @@ function AppContent() {
     currentRound,
     totalRounds,
     question,
+    questionMode,
+    questionImage,
     timeLeft,
     phaseEndsAt,
     votingOptions,
@@ -228,7 +229,7 @@ function AppContent() {
     }
   };
 
-  const showAppSettingsBtn = ['home', 'createRoom', 'joinRoom', 'lobby', 'finalLeaderboard'].includes(currentScreen);
+  const showSettingsModal = showSettings && currentScreen === 'gameplay';
 
   return (
     <div className="min-h-screen w-full relative overflow-hidden">
@@ -239,19 +240,6 @@ function AppContent() {
       )}
 
       <FloatingBackgroundIcons screen={currentScreen} />
-
-      {showAppSettingsBtn && (
-        <button
-          type="button"
-          onClick={openSettings}
-          className={`fixed top-5 z-30 flex items-center gap-2 bg-black/40 hover:bg-black/55 backdrop-blur-md px-4 py-2 rounded-full text-white text-sm font-semibold border border-white/15 transition ${
-            currentScreen === 'home' ? 'left-5' : 'right-5'
-          }`}
-        >
-          <Settings size={16} />
-          Settings
-        </button>
-      )}
 
       <div className="relative z-[1]">
         {currentScreen === 'home' && (
@@ -313,6 +301,8 @@ function AppContent() {
                 <GameSubmitScreen
                   key={`submit-${currentRound}`}
                   question={question}
+                  questionMode={questionMode}
+                  questionImage={questionImage}
                   submittedCount={submittedCount}
                   totalPlayers={players.length}
                   onSubmit={handleSubmitAnswer}
@@ -372,7 +362,7 @@ function AppContent() {
         )}
       </div>
 
-      {showSettings && (
+      {showSettingsModal && (
         <SettingsModal
           onClose={() => setShowSettings(false)}
           onHowToPlay={handleSettingsHowToPlay}

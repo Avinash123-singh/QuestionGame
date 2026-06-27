@@ -6,7 +6,7 @@
  *   DATABASE_URL=postgresql://... node scripts/import-questions.js
  *   DATABASE_URL=... node scripts/import-questions.js path/to/questions.json
  *
- * JSON format: [{ "text": "...", "realAnswer": "...", "category": "trivia" }]
+ * JSON format: [{ "text": "...", "realAnswer": "...", "type": "weird_facts" }]
  */
 
 require('dotenv').config();
@@ -54,7 +54,7 @@ async function main() {
   const counts = await getQuestionCounts();
   console.log(`\n✅ Done: ${totalInserted} inserted, ${totalSkipped} skipped`);
   console.log(`📊 Total in DB: ${counts.total}`);
-  counts.byCategory.forEach((r) => console.log(`   ${r.category}: ${r.count}`));
+  counts.byType.forEach((r) => console.log(`   ${r.type}: ${r.count}`));
 }
 
 main().catch((err) => {

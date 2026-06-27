@@ -2,6 +2,13 @@ const { DEFAULT_QUESTIONS } = require('../game/questions');
 
 let pool = null;
 
+function useSsl(connectionString) {
+  if (process.env.DATABASE_SSL === 'true') return { rejectUnauthorized: false };
+  if (process.env.DATABASE_SSL === 'false') return false;
+  const local = /@(localhost|127\.0\.0\.1|postgres)(:|\/)/.test(connectionString);
+  return process.env.NODE_ENV === 'production' && !local ? { rejectUnauthorized: false } : false;
+}
+
 async function initDatabase() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -14,7 +21,7 @@ async function initDatabase() {
     const { Pool } = require('pg');
     pool = new Pool({
       connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl: useSsl(connectionString),
     });
 
     await pool.query(`
@@ -22,12 +29,22 @@ async function initDatabase() {
         id SERIAL PRIMARY KEY,
         text TEXT NOT NULL,
         real_answer TEXT NOT NULL,
-        category VARCHAR(50) NOT NULL DEFAULT 'trivia',
+        category VARCHAR(50) NOT NULL DEFAULT 'weird_facts',
+        type VARCHAR(50),
+        image_url TEXT,
+        difficulty VARCHAR(20) DEFAULT 'medium',
+        times_played INT NOT NULL DEFAULT 0,
         source VARCHAR(50) DEFAULT 'manual',
         created_at TIMESTAMPTZ DEFAULT NOW(),
         UNIQUE (text, real_answer)
       )
     `);
+
+    await pool.query(`ALTER TABLE questions ADD COLUMN IF NOT EXISTS type VARCHAR(50)`);
+    await pool.query(`ALTER TABLE questions ADD COLUMN IF NOT EXISTS image_url TEXT`);
+    await pool.query(`ALTER TABLE questions ADD COLUMN IF NOT EXISTS difficulty VARCHAR(20) DEFAULT 'medium'`);
+    await pool.query(`ALTER TABLE questions ADD COLUMN IF NOT EXISTS times_played INT NOT NULL DEFAULT 0`);
+    await pool.query(`UPDATE questions SET type = category WHERE type IS NULL`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS player_profiles (
@@ -61,18 +78,20 @@ async function initDatabase() {
     `);
 
     await pool.query('CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_questions_type ON questions(type)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_player_seen_player ON player_seen_questions(player_id)');
 
     const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM questions');
     if (rows[0].count === 0) {
       for (const q of DEFAULT_QUESTIONS) {
+        const type = q.type || q.category || 'weird_facts';
         await pool.query(
-          `INSERT INTO questions (text, real_answer, category, source)
-           VALUES ($1, $2, $3, 'seed') ON CONFLICT (text, real_answer) DO NOTHING`,
-          [q.text, q.realAnswer, q.category]
+          `INSERT INTO questions (text, real_answer, category, type, source)
+           VALUES ($1, $2, $3, $3, 'seed') ON CONFLICT (text, real_answer) DO NOTHING`,
+          [q.text, q.realAnswer, type]
         );
       }
-      console.log('✅ Seeded default questions into database');
+      console.log(`✅ Seeded ${DEFAULT_QUESTIONS.length} party-mode questions into database`);
     }
 
     const countResult = await pool.query('SELECT COUNT(*)::int AS count FROM questions');
@@ -96,18 +115,19 @@ function isDatabaseReady() {
 async function getQuestionCounts() {
   if (!pool) return null;
   const { rows } = await pool.query(
-    `SELECT category, COUNT(*)::int AS count FROM questions GROUP BY category ORDER BY category`
+    `SELECT COALESCE(type, category) AS type, COUNT(*)::int AS count
+     FROM questions GROUP BY COALESCE(type, category) ORDER BY type`
   );
   const total = rows.reduce((sum, r) => sum + r.count, 0);
-  return { total, byCategory: rows };
+  return { total, byType: rows, byCategory: rows };
 }
 
-async function saveGameSession({ roomCode, winnerName, playerCount, totalRounds }) {
+async function saveGameSession({ roomCode, winnerName, playerCount, totalRounds, gameMode }) {
   if (!pool) return;
   try {
     await pool.query(
-      'INSERT INTO game_sessions (room_code, winner_name, player_count, total_rounds) VALUES ($1, $2, $3, $4)',
-      [roomCode, winnerName, playerCount, totalRounds]
+      'INSERT INTO game_sessions (room_code, winner_name, player_count, total_rounds, game_mode) VALUES ($1, $2, $3, $4, $5)',
+      [roomCode, winnerName, playerCount, totalRounds, gameMode || null]
     );
   } catch (err) {
     console.warn('Failed to save game session:', err.message);

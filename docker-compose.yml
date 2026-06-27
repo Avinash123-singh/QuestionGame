@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fakeanswer-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: fakeanswer
+      POSTGRES_DB: fakeanswer
+    ports:
+      - "5433:5432"
+    volumes:
+      - fakeanswer_pg:/var/lib/postgresql/data
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fakeanswer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fakeanswer-api
+    ports:
+      - "5002:5002"
+    environment:
+      PORT: 5002
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:fakeanswer@postgres:5432/fakeanswer
+      CLIENT_URL: http://localhost:5173,http://localhost:3000
+      FORCE_SEED: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fakeanswer-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: fakeanswer-tunnel
+    command: tunnel --no-autoupdate --url http://frontend:80
+    depends_on:
+      - frontend
+    profiles:
+      - live
+    restart: unless-stopped
+
+volumes:
+  fakeanswer_pg:

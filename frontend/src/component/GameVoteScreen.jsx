@@ -21,9 +21,9 @@ export default function GameVoteScreen({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <div className="shrink-0 bg-purple-900/50 rounded-xl p-6 mb-4">
-        <div className="text-white/60 text-sm mb-2">QUESTION</div>
-        <div className="text-xl font-bold text-white">{question}</div>
+      <div className="shrink-0 bg-purple-900/50 rounded-xl p-4 md:p-6 mb-3 md:mb-4">
+        <div className="text-white/60 text-xs md:text-sm mb-2">QUESTION</div>
+        <div className="text-base md:text-xl font-bold text-white">{question}</div>
       </div>
 
       <div className="shrink-0 mb-3">

@@ -6,6 +6,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const { initDatabase, getQuestionCounts, isDatabaseReady } = require('./db/db');
 const { getProfile, upsertProfile, updateProfile } = require('./db/playerService');
+const { CATEGORIES } = require('./game/categories');
 const { createRoomManager } = require('./game/gameEngine');
 
 const app = express();
@@ -19,7 +20,11 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173,http://
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (
+        !origin
+        || allowedOrigins.includes(origin)
+        || /\.trycloudflare\.com$/.test(origin)
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -33,7 +38,11 @@ const io = new Server(server, {
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (
+        !origin
+        || allowedOrigins.includes(origin)
+        || /\.trycloudflare\.com$/.test(origin)
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -55,6 +64,10 @@ app.get('/', (_req, res) => {
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString(), database: isDatabaseReady() });
+});
+
+app.get('/api/categories', (_req, res) => {
+  res.json({ categories: CATEGORIES, total: CATEGORIES.length });
 });
 
 app.get('/api/questions/stats', async (_req, res) => {

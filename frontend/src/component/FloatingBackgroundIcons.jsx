@@ -101,6 +101,12 @@ const FloatingIcon = styled(Box)(() => ({
   zIndex: 0,
 }));
 
+// Home: hide only the top-left floating casino (duplicate of hero dice above title)
+const HOME_HIDE_FLOATING_INDICES = new Set([0]);
+
+// Mobile only: hide icons that overlap the center title area (desktop unchanged)
+const MOBILE_CENTER_OVERLAP_INDICES = new Set([1, 3, 16, 18]);
+
 const positions = [
   { top: '3%', left: '2%', size: 54, rotate: '-14deg' },
   { top: '7%', left: '20%', size: 36, rotate: '12deg' },
@@ -170,6 +176,8 @@ export default function FloatingBackgroundIcons({ screen = 'home' }) {
         const Icon = icons[i % icons.length];
         if (!Icon) return null;
 
+        const hideOnHome = screen === 'home' && HOME_HIDE_FLOATING_INDICES.has(i);
+
         return (
           <FloatingIcon
             key={`${screen}-${i}`}
@@ -182,6 +190,10 @@ export default function FloatingBackgroundIcons({ screen = 'home' }) {
               height: pos.size,
               transform: `rotate(${pos.rotate})`,
               opacity: 0.38 + (i % 3) * 0.04,
+              display: hideOnHome ? 'none' : 'flex',
+              '@media (max-width: 767px)': {
+                display: hideOnHome || MOBILE_CENTER_OVERLAP_INDICES.has(i) ? 'none' : 'flex',
+              },
             }}
           >
             <Icon sx={{ fontSize: pos.size * 0.5 }} />

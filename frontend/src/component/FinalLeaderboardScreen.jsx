@@ -78,13 +78,13 @@ export default function FinalLeaderboardScreen({
   const third = leaderboard[2];
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center p-4 md:p-6 relative overflow-hidden">
       <Confetti />
 
       <div className="relative z-10 text-center w-full max-w-lg phase-enter">
         <div className="flex items-center justify-center gap-3 mb-1">
           <span className="text-3xl">🎉</span>
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-wide">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-wide">
             GAME OVER!
           </h1>
           <span className="text-3xl">🎉</span>
@@ -130,7 +130,7 @@ export default function FinalLeaderboardScreen({
           </div>
         )}
 
-        <div className="flex gap-3 max-w-md mx-auto">
+        <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto w-full">
           {isHost ? (
             <button
               onClick={onPlayAgain}

@@ -11,7 +11,7 @@ function CharacterBlobs() {
   ];
 
   return (
-    <div className="relative h-36 flex items-end justify-center gap-3 mb-6">
+    <div className="relative h-24 md:h-36 flex items-end justify-center gap-2 md:gap-3 mb-4 md:mb-6">
       {['🎊', '✨', '🎉', '⭐'].map((c, i) => (
         <span
           key={i}
@@ -50,7 +50,7 @@ export default function JoinRoomScreen({ onJoin, onBack, error, initialProfile, 
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-6">
+    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 md:p-6 py-6">
       <div className="w-full max-w-md">
         <div className="flex items-center mb-6">
           <button
